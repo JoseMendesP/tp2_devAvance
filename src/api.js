@@ -7,22 +7,22 @@ import crypto from 'crypto';
  * @param url l'end-point
  * @return {Promise<json>}
  */
-const publicKey="700f1e9ecc7a4fd78a1a39c77838df24"
-const privateKey="59691e31a54e80f0eb291f130daa9fa33d3f13d9"
-const ts=  Date.now()
+require('dotenv').config();
+const publicKey = process.env.publicKey;
+const privateKey = process.env.privateKey;
+const ts = process.env.ts;
 
 export const getData = async (url) => {
     try {
-        const response = await fetch(url + "?" + new URLSearchParams({
-            apikey: publicKey,
-            hash: await getHash(publicKey, privateKey, ts),
-            ts: ts,
-        }));
+        const hash = crypto.createHash('md5').update(ts + privateKey + publicKey).digest('hex');
+        const Urlapi = `${url}?apikey=${publicKey}&ts=${ts}&hash=${hash}`;
+        console.log('URL pour la requête API :', Urlapi); // Pour vérifier l'URL pour le débogage
 
-        const responseJson = await response.json();
+        const response = await fetch(Urlapi);
+        const responseData = await response.json();
 
-        if (responseJson && responseJson.data && responseJson.data.results) {
-            const responseResults = responseJson.data.results;
+        if (responseData && responseData.data && responseData.data.results) {
+            const responseResults = responseData.data.results;
             let responseWithThumbnail = [];
 
             responseResults.forEach((element) => {
@@ -33,18 +33,19 @@ export const getData = async (url) => {
 
             return responseWithThumbnail.map((character) => {
                 const newCharacter = { ...character };
-                newCharacter.imageUrl = character.thumbnail.path + "/portrait_xlarge." + character.thumbnail.extension;
+                newCharacter.imageUrl = `${character.thumbnail.path}/portrait_xlarge.${character.thumbnail.extension}`;
                 return newCharacter;
             });
         } else {
-            console.error('Aucun résultat à été trouvé.');
+            console.error('Aucun résultat trouvé.');
             return [];
         }
     } catch (error) {
         console.error('Erreur de récupération:', error);
         throw error;
     }
-}
+};
+
 
 /**
  * Calcul la valeur md5 dans l'ordre : timestamp+privateKey+publicKey
